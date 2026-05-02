@@ -1,0 +1,50 @@
+# CI for Terraform root + module. Submit from producer project:
+#   gcloud builds submit --config=cloudbuild.yaml --project=sadaf-gcp-project-494415 .
+#
+# Optional GitHub trigger: connect repo in Cloud Console (Cloud Build > Triggers),
+# use this file as the config path.
+
+substitutions:
+  _TERRAFORM_VERSION: "1.9.8"
+
+steps:
+  - id: terraform-fmt-check
+    name: "hashicorp/terraform:${_TERRAFORM_VERSION}"
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        terraform fmt -check -recursive
+
+  - id: terraform-validate-root
+    name: "hashicorp/terraform:${_TERRAFORM_VERSION}"
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        terraform init -backend=false
+        terraform validate
+
+  - id: terraform-validate-module
+    name: "hashicorp/terraform:${_TERRAFORM_VERSION}"
+    dir: modules/standard-gcs-bucket
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        terraform init -backend=false
+        terraform validate
+
+  # Plan uses default credentials (Cloud Build service account). Grant that SA
+  # at least roles/serviceusage.serviceUsageViewer + resource viewer on the target project.
+  - id: terraform-plan-dev
+    name: "hashicorp/terraform:${_TERRAFORM_VERSION}"
+    entrypoint: sh
+    args:
+      - -ec
+      - |
+        terraform init -backend=false
+        terraform plan -input=false -var-file=terraform.tfvars
+
+options:
+  logging: CLOUD_LOGGING_ONLY
