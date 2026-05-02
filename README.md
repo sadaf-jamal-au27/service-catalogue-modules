@@ -53,6 +53,33 @@ gcloud builds submit --config=cloudbuild.yaml --project=sadaf-gcp-project-494415
 
 Connect [https://github.com/sadaf-jamal-au27/service-catalogue-modules](https://github.com/sadaf-jamal-au27/service-catalogue-modules) in **Cloud Build → Repositories / Triggers** to run `cloudbuild.yaml` on push.
 
+### Error: `compute@developer.gserviceaccount.com` / `storage.objects.get` denied
+
+After `gcloud builds submit` uploads to `gs://PROJECT_ID_cloudbuild/`, Cloud Build reads that object using your project’s **default Compute Engine service account** (and/or the **Cloud Build service account**). If that bucket was created under tight defaults or org policy, those accounts may lack **objectViewer** on the staging bucket.
+
+**Fix (run once as project Owner / Storage Admin):**
+
+```bash
+chmod +x scripts/fix-cloudbuild-source-bucket-iam.sh
+./scripts/fix-cloudbuild-source-bucket-iam.sh sadaf-gcp-project-494415
+```
+
+Or manually (replace `345292937268` with your project number from **IAM & Admin → Settings** if it differs):
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://sadaf-gcp-project-494415_cloudbuild \
+  --member="serviceAccount:345292937268-compute@developer.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+gcloud storage buckets add-iam-policy-binding gs://sadaf-gcp-project-494415_cloudbuild \
+  --member="serviceAccount:345292937268@cloudbuild.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+```
+
+The script also grants **`roles/logging.logWriter`** on the project to the default Compute SA so build logs can stream to Cloud Logging (optional if you only use GCS logs).
+
+Then run `./scripts/submit-cloudbuild.sh` again.
+
 ## Local
 
 ```bash
