@@ -12,7 +12,38 @@ Reusable Terraform for **Google Cloud Service Catalog**–style workflows: a **s
 ## Layout
 
 - `modules/standard-gcs-bucket/` — portable module (zip root for Service Catalog)
+- `bootstrap/` — producer **artifact bucket** + IAM so Cloud Build can upload module zips
 - Root `*.tf` — example composition; defaults in `terraform.tfvars` / `terraform.prod.tfvars`
+
+## Stage 2 — Module artifact bucket + publish (Service Catalog prep)
+
+1. **Create the bucket and IAM** (once per producer project):
+
+   ```bash
+   cd bootstrap
+   terraform init
+   terraform apply
+   ```
+
+   This creates `gs://sadaf-gcp-494415-tf-catalog-modules` (see `bootstrap/terraform.tfvars`) with **versioning**, **UBLA**, and **`roles/storage.objectAdmin`** for the Cloud Build and default Compute service accounts.
+
+2. **Run CI and upload the module zip** to `gs://<bucket>/releases/`:
+
+   ```bash
+   ./scripts/submit-cloudbuild.sh --publish
+   ```
+
+   Or keep CI-only (no upload): `./scripts/submit-cloudbuild.sh`
+
+   Override the bucket name if you changed it in bootstrap:
+
+   ```bash
+   gcloud builds submit --config=cloudbuild.yaml --project=sadaf-gcp-project-494415 \
+     --substitutions=_PUBLISH_MODULE=true,_ARTIFACT_BUCKET=YOUR_BUCKET \
+     .
+   ```
+
+3. **Register in Google Cloud Service Catalog** (console): **Service Catalog Admin → Solutions → Create solution → Create Terraform config**. Set **Link to Terraform config** to the object from step 2, e.g. `gs://sadaf-gcp-494415-tf-catalog-modules/releases/standard-gcs-bucket-build-….zip`, pin a **Terraform version**, then assign the solution to a **catalog** and **share** the catalog with your consumer folder/project (`app-project-487612`, etc.). Official flow: [Creating a Terraform configuration](https://cloud.google.com/service-catalog/docs/terraform-configuration).
 
 ## Cloud Build
 

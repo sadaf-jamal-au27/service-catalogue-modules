@@ -6,6 +6,9 @@
 
 substitutions:
   _TERRAFORM_VERSION: "1.9.8"
+  # Stage 2: set _PUBLISH_MODULE=true after bootstrap/ apply (module artifact bucket).
+  _PUBLISH_MODULE: "false"
+  _ARTIFACT_BUCKET: "sadaf-gcp-494415-tf-catalog-modules"
 
 steps:
   - id: terraform-fmt-check
@@ -45,6 +48,32 @@ steps:
       - |
         terraform init -backend=false
         terraform plan -input=false -var-file=terraform.tfvars
+
+  # Zip modules/standard-gcs-bucket (root of zip = module) and upload for Service Catalog.
+  - id: publish-module-artifact
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if [[ "${_PUBLISH_MODULE}" != "true" ]]; then
+          echo "Skipping publish (_PUBLISH_MODULE != true)"
+          exit 0
+        fi
+        apt-get update -qq && apt-get install -y -qq zip >/dev/null
+        cd modules/standard-gcs-bucket
+        if [[ -n "$$SHORT_SHA" ]]; then
+          ZIP_VER="$$SHORT_SHA"
+        elif [[ -n "$$COMMIT_SHA" ]]; then
+          ZIP_VER="$${COMMIT_SHA:0:7}"
+        else
+          ZIP_VER="build-$$BUILD_ID"
+        fi
+        ARTIFACT="/workspace/standard-gcs-bucket-$${ZIP_VER}.zip"
+        zip -rq "$$ARTIFACT" .
+        gsutil cp "$$ARTIFACT" "gs://${_ARTIFACT_BUCKET}/releases/"
+        echo "Published: gs://${_ARTIFACT_BUCKET}/releases/standard-gcs-bucket-$${ZIP_VER}.zip"
 
 options:
   logging: CLOUD_LOGGING_ONLY
