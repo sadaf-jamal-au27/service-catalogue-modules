@@ -25,13 +25,19 @@ Reusable Terraform for **Google Cloud Service Catalog**–style workflows: a **s
    terraform apply
    ```
 
+   At the prompt, type **`yes`** exactly (nothing else) to approve. To skip the prompt:  
+   `terraform apply -auto-approve`.
+
    This creates `gs://sadaf-gcp-494415-tf-catalog-modules` (see `bootstrap/terraform.tfvars`) with **versioning**, **UBLA**, and **`roles/storage.objectAdmin`** for the Cloud Build and default Compute service accounts.
 
-2. **Run CI and upload the module zip** to `gs://<bucket>/releases/`:
+2. **Run CI and upload the module zip** to `gs://<bucket>/releases/` from the **repository root** (parent of `bootstrap/`):
 
    ```bash
+   cd ..   # if you are still inside bootstrap/
    ./scripts/submit-cloudbuild.sh --publish
    ```
+
+   If you stay in `bootstrap/`, use `../scripts/submit-cloudbuild.sh --publish` instead.
 
    Or keep CI-only (no upload): `./scripts/submit-cloudbuild.sh`
 
