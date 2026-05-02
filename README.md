@@ -16,7 +16,36 @@ Reusable Terraform for **Google Cloud Service Catalog**–style workflows: a **s
 
 ## Cloud Build
 
-Manual run (producer):
+### gcloud + Python on macOS
+
+If `gcloud builds submit` crashes with `unsupported operand type(s) for |`, point gcloud at Python **3.10+**:
+
+```bash
+export CLOUDSDK_PYTHON="$(command -v python3.11 || command -v python3.12)"
+```
+
+Or run:
+
+```bash
+chmod +x scripts/submit-cloudbuild.sh
+./scripts/submit-cloudbuild.sh
+```
+
+### IAM to submit builds
+
+Your Google account must be able to create builds and upload source to the staging bucket. A project owner can grant (replace the email):
+
+```bash
+gcloud projects add-iam-policy-binding sadaf-gcp-project-494415 \
+  --member="user:YOUR_EMAIL@gmail.com" \
+  --role="roles/cloudbuild.builds.editor"
+
+gcloud projects add-iam-policy-binding sadaf-gcp-project-494415 \
+  --member="user:YOUR_EMAIL@gmail.com" \
+  --role="roles/storage.objectAdmin"
+```
+
+Then:
 
 ```bash
 gcloud builds submit --config=cloudbuild.yaml --project=sadaf-gcp-project-494415 .

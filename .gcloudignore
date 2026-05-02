@@ -1,0 +1,7 @@
+# Keep Cloud Build source uploads small and reproducible
+.git/
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.DS_Store
